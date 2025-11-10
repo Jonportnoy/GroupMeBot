@@ -18,7 +18,7 @@ from google.auth.transport.requests import Request
 
 client = Client.from_token(token)
 group = client.groups.get(nu_chi)
-bot = client.bots.list()[1].manager
+bot = client.bots.list()[2].manager
 
 
 # Choose scope: readonly OR full (edit). Start with readonly.
@@ -44,9 +44,9 @@ def get_service():
 
 def bot_post(i: int, *args):
     if i:
-        event_text()
+        return event_text()
     else:
-        print(f"No events in the next {args[0]} day(s)!")
+        return f"No events in the next {args[0]} day(s)!"
 
 
 def list_next_events(service, n=7):
@@ -73,7 +73,7 @@ def list_next_events(service, n=7):
             description = e['description']
             bot_print["description"] = description
             if "Attending" in description and "not attending" not in description.lower():
-                start = description.find("Attending")
+                start = description.find("Attending") + 9
                 end = description.find("<br>", start)
 
                 if end != -1:
@@ -88,14 +88,16 @@ def list_next_events(service, n=7):
                 bot_print['rms'] = description[rms_start:rms_end]
         except KeyError:
             bot_print["no_des"] = "No description for event. Please check if there are rms, set up, and/or cleanup for this event."
+            bot_print['attendance'] = "None"
         finally:
             bot_print_array.append(bot_print)
 
 def event_text():
+    text =""
     for curr_event in bot_print_array:
-        text = curr_event['name'] + ' - ' + curr_event['event_date'] +'\n'
-        if 'attendance' in curr_event:
-            text += "    " + curr_event["attendance"] + '\n'
+        text += curr_event['name'] + ' - ' + curr_event['event_date'] +'\n'
+
+        text += "    Attending: " + curr_event["attendance"] + '\n'
 
         if 'description' in curr_event and len(curr_event['description']) < 50:
             text += "    " + curr_event['description'] + '\n'
@@ -104,12 +106,15 @@ def event_text():
         if 'rms' in curr_event:
             text += "    " + curr_event["rms"] + '\n'
 
-        print(text)
+    return text
 
 
 def main():
 
-    ten_am = (datetime.now() + timedelta(days=0)).replace(hour=10, minute=0, second=0, microsecond=0)
+    testing = True
+    ten_am = (datetime.now() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    if testing:
+        ten_am = (datetime.now() + timedelta(seconds= 5)).replace(microsecond=0)
     while True:
         now = datetime.now().replace(microsecond=0)
         if now == ten_am:
@@ -118,12 +123,18 @@ def main():
                 ten_am = (datetime.now() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
                 continue
             bot_post(1)
-            ten_am = (datetime.now() + timedelta(days=0)).replace(hour=10, minute=0, second=0, microsecond=0)
+            ten_am = (datetime.now() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
         time.sleep(1)
         print(int(ten_am.timestamp() - now.timestamp()), 'seconds to program execution.')
 
-
+def test():
+    test_text = "This is a test:\n"
+    svc = get_service()
+    (list_next_events(svc, 1))
+    test_text += "Nu Chi Events today:\n" + event_text()
+    print(test_text)
 
 
 if __name__ == "__main__":
-    main()
+    ##main()
+    test()
