@@ -1,9 +1,6 @@
 from __future__ import print_function
 
 import time
-from contextlib import nullcontext
-from idlelib.replace import replace
-from operator import indexOf
 
 from groupy.client import Client
 from groupy.api.bots import *
@@ -19,7 +16,6 @@ from google.auth.transport.requests import Request
 client = Client.from_token(token)
 group = client.groups.get(nu_chi)
 bot = client.bots.list()[2].manager
-
 
 # Choose scope: readonly OR full (edit). Start with readonly.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
@@ -38,7 +34,7 @@ def get_service():
             flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
         with open('token.pickle', 'wb') as f:
-            pickle.dump(creds, f)
+            pickle.dump(creds, f)  # type: ignore[arg-type]
     return build('calendar', 'v3', credentials=creds)
 
 
@@ -56,7 +52,7 @@ def list_next_events(service, n=7):
         calendarId='q7smrar352glt664bd9b0smdtk@group.calendar.google.com',
         timeMin=now,
         timeMax=tomorrow,
-        singleEvents=True,      # expand recurring series
+        singleEvents=True,  # expand recurring series
         orderBy='startTime',
         maxResults=10
     ).execute().get('items', [])
@@ -68,7 +64,7 @@ def list_next_events(service, n=7):
         start = e['start'].get('dateTime') or e['start'].get('date')
         start = datetime.fromisoformat(start).strftime("%m-%d-%Y at %I:%M %p")
         bot_print["event_date"] = start
-        bot_print['name'] = e.get('summary','(no title)')
+        bot_print['name'] = e.get('summary', '(no title)')
         try:
             description = e['description']
             bot_print["description"] = description
@@ -87,17 +83,23 @@ def list_next_events(service, n=7):
                 rms_end = description.lower().find("\n", rms_start)
                 bot_print['rms'] = description[rms_start:rms_end]
         except KeyError:
-            bot_print["no_des"] = "No description for event. Please check if there are rms, set up, and/or cleanup for this event."
+            bot_print[
+                "no_des"] = "No description for event. Please check if there are rms, set up, and/or cleanup for this event."
             bot_print['attendance'] = "None"
         finally:
             bot_print_array.append(bot_print)
 
-def event_text():
-    text =""
-    for curr_event in bot_print_array:
-        text += curr_event['name'] + ' - ' + curr_event['event_date'] +'\n'
 
-        text += "    Attending: " + curr_event["attendance"] + '\n'
+def event_text():
+    """
+    Combines all the event dict text into a message to send to the groupme
+    :return: a completed string representation of the message to send
+    """
+    text = ""
+    for curr_event in bot_print_array:
+        text += curr_event['name'] + ' - ' + curr_event['event_date'] + '\n'
+        if curr_event['attendance'] != 'None':
+            text += "    Attending: " + curr_event["attendance"] + '\n'
 
         if 'description' in curr_event and len(curr_event['description']) < 50:
             text += "    " + curr_event['description'] + '\n'
@@ -110,11 +112,10 @@ def event_text():
 
 
 def main():
-
     testing = True
     ten_am = (datetime.now() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
     if testing:
-        ten_am = (datetime.now() + timedelta(seconds= 5)).replace(microsecond=0)
+        ten_am = (datetime.now() + timedelta(seconds=5)).replace(microsecond=0)
     while True:
         now = datetime.now().replace(microsecond=0)
         if now == ten_am:
@@ -122,15 +123,16 @@ def main():
             if list_next_events(svc, 1) == 'no events':
                 ten_am = (datetime.now() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
                 continue
-            bot_post(1)
+            Bots.post(bot, bot_id=bot_id, text=bot_post(1))
             ten_am = (datetime.now() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
         time.sleep(1)
         print(int(ten_am.timestamp() - now.timestamp()), 'seconds to program execution.')
 
+
 def test():
-    test_text = "This is a test:\n"
+    test_text = ""
     svc = get_service()
-    (list_next_events(svc, 1))
+    list_next_events(svc, 1)
     test_text += "Nu Chi Events today:\n" + event_text()
     print(test_text)
 
