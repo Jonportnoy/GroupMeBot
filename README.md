@@ -20,7 +20,7 @@ A Python-based GroupMe bot that automatically posts event information to a group
    pip install -r requirements.txt
 3. Set environment variables for the GroupMe bot token
 4. Run the bot
-   python bot.py
+   python nu_chi_event_info_bot.py
 
 ## What I Learned
 - Working with third-party APIs
